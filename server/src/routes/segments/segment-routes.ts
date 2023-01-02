@@ -1,10 +1,12 @@
 import express, { Router } from "express";
 import * as SegmentRouteHandler from "./segment-route-handler";
-import { isValid, paramMongoId } from "../../common/validator";
+import {isValid, querySearch, paramMongoId, skipInt, limitInt} from "../../common/validator";
 
 const router: Router = express.Router();
 
-router.route("/").get(SegmentRouteHandler.segmentList);
+router
+  .route("/")
+  .get(querySearch, skipInt, limitInt, isValid, SegmentRouteHandler.segmentList);
 
 router
   .route("/:id")

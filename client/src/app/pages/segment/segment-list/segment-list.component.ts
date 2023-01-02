@@ -1,10 +1,10 @@
-import { Component, OnInit, ViewChild } from "@angular/core";
+import { Component, OnInit, AfterViewInit, ViewChild } from "@angular/core";
 import { HttpParams } from "@angular/common/http";
 import { FormControl, FormGroup } from "@angular/forms";
 import { ISegmentMetaData } from "../../../core/types";
-import { debounceTime, mergeMap } from "rxjs/operators";
+import { debounceTime, mergeMap, map, skip } from "rxjs/operators";
 import { SegmentService } from "../../../core/services/segment.service";
-import { Observable } from "rxjs";
+import { Observable, of, combineLatest, concat } from "rxjs";
 import { MatPaginator, PageEvent } from "@angular/material/paginator";
 import { Router } from "@angular/router";
 
@@ -13,10 +13,12 @@ import { Router } from "@angular/router";
   templateUrl: "./segment-list.component.html",
   styleUrls: ["./segment-list.component.scss"],
 })
-export class SegmentListComponent implements OnInit {
+export class SegmentListComponent implements OnInit, AfterViewInit {
   segmentMetaDataList: ISegmentMetaData[] = [];
-
   totalCount: number;
+
+  pageIndex = 0;
+  readonly pageSize = 15;
   searchValue: string;
 
   columnList: { label: string; key: string }[] = [
@@ -26,7 +28,7 @@ export class SegmentListComponent implements OnInit {
     { label: "Dominant Gender", key: "topGender" },
   ];
 
-  waitingForResponse: boolean;
+  dataLoaded = false;
 
   form: FormGroup = new FormGroup({
     search: new FormControl(""),
@@ -37,32 +39,60 @@ export class SegmentListComponent implements OnInit {
   constructor(private segmentService: SegmentService, private router: Router) {}
 
   ngOnInit(): void {
-    this.form.controls["search"].valueChanges
+    this.fetchSegments()
+      .subscribe(
+        (response) => {
+          if (this.dataLoaded) {
+            return;
+          }
+          this.dataLoaded = true;
+          this.handleListResponse(response);
+        },
+        (error) => {
+          console.log(`error fetching list ${error}`);
+        }
+      );
+  }
+
+  ngAfterViewInit(): void {
+    const pageIndex$ = concat(
+      of(0),
+      this.paginator.page
+          .pipe(map(event => event.pageIndex))
+    );
+    const searchValue$ = concat(
+      of(''),
+      this.form.controls["search"].valueChanges
+        .pipe(debounceTime(500))
+    );
+
+    combineLatest([
+      pageIndex$,
+      searchValue$
+    ])
       .pipe(
-        debounceTime(500),
-        mergeMap((value) => {
-          this.searchValue = value;
+        skip(1),
+        mergeMap(([pageIndex, searchValue]) => {
+          this.pageIndex = pageIndex;
+          this.searchValue = searchValue;
           return this.fetchSegments();
         })
       )
-      .subscribe((response) => {
-        this.handleListResponse(response);
-      });
-
-    this.fetchSegments().subscribe(
-      (response) => {
-        this.handleListResponse(response);
-      },
-      (error) => {
-        console.log(`error fetching list ${error}`);
-      }
-    );
+      .subscribe(
+        (response) => {
+          this.dataLoaded = true;
+          this.handleListResponse(response);
+        },
+        (error) => {
+          console.log(`error fetching list ${error}`);
+        }
+      );
   }
 
   private handleListResponse(response: {
     data: ISegmentMetaData[];
     totalCount: number;
-  }) {
+  }): void {
     this.segmentMetaDataList = response.data;
     this.totalCount = response.totalCount;
   }
@@ -71,7 +101,10 @@ export class SegmentListComponent implements OnInit {
     data: ISegmentMetaData[];
     totalCount: number;
   }> {
-    let params = new HttpParams()
+    let params = new HttpParams();
+
+    params = params.set("skip", `${this.pageIndex * this.pageSize}`);
+    params = params.set("limit", `${this.pageSize}`);
 
     if (this.searchValue?.length) {
       params = params.set("q", this.searchValue);

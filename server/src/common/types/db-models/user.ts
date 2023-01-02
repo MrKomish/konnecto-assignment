@@ -5,13 +5,13 @@ export interface IUser {
   segment_ids: ObjectId[];
   age: number;
   gender?: Gender; //optional
-  income_level: string;
+  income_level: number;
   income_type: IncomeType;
 }
 
 export enum IncomeType {
-  Monthly,
-  Yearly,
+  Monthly = "monthly",
+  Yearly = "yearly",
 }
 
 export enum Gender {

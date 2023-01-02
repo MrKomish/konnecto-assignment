@@ -18,6 +18,38 @@ export const checkAuth = [
     .withMessage("input is empty"),
 ];
 
+export const querySearch = [
+  query("q")
+    .optional({nullable: true})
+    .isString()
+    .withMessage("Input not string")
+    .trim(),
+];
+
+export const skipInt = [
+  query("skip")
+      .exists()
+      .withMessage("input does not exist")
+      .trim()
+      .not()
+      .isEmpty()
+      .withMessage("input is empty")
+      .isInt()
+      .withMessage("Input not int")
+];
+
+export const limitInt = [
+  query("limit")
+      .exists()
+      .withMessage("input does not exist")
+      .not()
+      .trim()
+      .isEmpty()
+      .withMessage("input is empty")
+      .isInt()
+      .withMessage("Input not int")
+];
+
 export const queryMongoId = [
   query("id")
     .exists()
