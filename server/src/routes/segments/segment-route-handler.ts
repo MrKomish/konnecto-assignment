@@ -176,7 +176,7 @@ async function _getSegmentUsersMetadata(segmentId: string): Promise<ISegmentUser
   return {
     topGender: _getTopGender(gendersUserCounts),
     userCount: metadata.userCount,
-    avgIncome: metadata.avgIncome
+    avgIncome: Math.round(metadata.avgIncome)
   };
 
 }
